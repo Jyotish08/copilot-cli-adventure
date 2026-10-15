@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pomodoro Timer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"Fraunces"', "Georgia", "serif"],
+            sans: ['"Source Sans 3"', "system-ui", "sans-serif"],
+          },
+          colors: {
+            ink: "#1c1914",
+            parchment: "#f4ead8",
+            clay: "#c45c26",
+            moss: "#3f5c4a",
+            sage: "#8aa58a",
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    body {
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(196, 92, 38, 0.18), transparent 50%),
+        radial-gradient(900px 500px at 110% 10%, rgba(63, 92, 74, 0.22), transparent 45%),
+        #1c1914;
+    }
+    .grain {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.08'/%3E%3C/svg%3E");
+    }
+    .ring-track {
+      stroke: rgba(244, 234, 216, 0.12);
+    }
+    .ring-progress {
+      transition: stroke-dashoffset 0.9s linear, stroke 0.3s ease;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+    .pulse-run {
+      animation: breathe 2.4s ease-in-out infinite;
+    }
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.015); }
+    }
+  </style>
+</head>
+<body class="min-h-screen text-parchment font-sans">
+  <div class="grain min-h-screen flex items-center justify-center px-4 py-10">
+    <main class="w-full max-w-md">
+      <header class="mb-8 text-center">
+        <p class="text-xs tracking-[0.35em] uppercase text-sage">Focus ritual</p>
+        <h1 class="font-display text-4xl mt-2 text-parchment">Pomodoro</h1>
+      </header>
+
+      <section class="rounded-3xl border border-parchment/10 bg-ink/60 backdrop-blur-md shadow-2xl p-6 sm:p-8">
+        <div class="flex rounded-full bg-parchment/5 p-1 mb-8" role="tablist" aria-label="Timer mode">
+          <button
+            id="sessionBtn"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            class="flex-1 rounded-full py-2 text-sm font-semibold transition"
+          >
+            Session
+          </button>
+          <button
+            id="breakBtn"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            class="flex-1 rounded-full py-2 text-sm font-semibold transition"
+          >
+            Break
+          </button>
+        </div>
+
+        <div class="relative mx-auto w-64 h-64 mb-8">
+          <svg viewBox="0 0 200 200" class="w-full h-full">
+            <circle cx="100" cy="100" r="86" fill="none" stroke-width="10" class="ring-track" />
+            <circle
+              id="progressRing"
+              cx="100"
+              cy="100"
+              r="86"
+              fill="none"
+              stroke-width="10"
+              stroke-linecap="round"
+              class="ring-progress"
+              stroke="#c45c26"
+            />
+          </svg>
+          <div id="dial" class="absolute inset-0 flex flex-col items-center justify-center">
+            <p id="modeLabel" class="text-xs tracking-[0.28em] uppercase text-sage mb-1">Session</p>
+            <p id="timeDisplay" class="font-display text-6xl tabular-nums leading-none">25:00</p>
+            <p id="statusLabel" class="mt-2 text-sm text-parchment/60">Ready</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 mb-8">
+          <button id="startBtn" type="button" class="rounded-2xl bg-clay text-parchment py-3 font-semibold hover:brightness-110 active:scale-[0.98] transition">
+            Start
+          </button>
+          <button id="pauseBtn" type="button" class="rounded-2xl bg-parchment/10 text-parchment py-3 font-semibold hover:bg-parchment/16 active:scale-[0.98] transition">
+            Pause
+          </button>
+          <button id="resetBtn" type="button" class="rounded-2xl border border-parchment/20 py-3 font-semibold hover:bg-parchment/5 active:scale-[0.98] transition">
+            Reset
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <label class="block">
+            <span class="block text-xs uppercase tracking-widest text-sage mb-2">Session (min)</span>
+            <input
+              id="sessionMinutes"
+              type="number"
+              min="1"
+              max="90"
+              value="25"
+              class="w-full rounded-xl bg-parchment/5 border border-parchment/10 px-3 py-2 text-parchment focus:outline-none focus:ring-2 focus:ring-clay"
+            />
+          </label>
+          <label class="block">
+            <span class="block text-xs uppercase tracking-widest text-sage mb-2">Break (min)</span>
+            <input
+              id="breakMinutes"
+              type="number"
+              min="1"
+              max="30"
+              value="5"
+              class="w-full rounded-xl bg-parchment/5 border border-parchment/10 px-3 py-2 text-parchment focus:outline-none focus:ring-2 focus:ring-moss"
+            />
+          </label>
+        </div>
+
+        <div class="flex items-center justify-between text-sm text-parchment/70">
+          <p>Completed sessions</p>
+          <p id="completedCount" class="font-display text-xl text-parchment">0</p>
+        </div>
+      </section>
+
+      <p class="mt-6 text-center text-xs text-parchment/40">
+        Progress is saved in this browser. Space starts or pauses.
+      </p>
+    </main>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "pomodoro-timer-v1";
+    const CIRCUMFERENCE = 2 * Math.PI * 86;
+
+    const els = {
+      sessionBtn: document.getElementById("sessionBtn"),
+      breakBtn: document.getElementById("breakBtn"),
+      progressRing: document.getElementById("progressRing"),
+      timeDisplay: document.getElementById("timeDisplay"),
+      modeLabel: document.getElementById("modeLabel"),
+      statusLabel: document.getElementById("statusLabel"),
+      startBtn: document.getElementById("startBtn"),
+      pauseBtn: document.getElementById("pauseBtn"),
+      resetBtn: document.getElementById("resetBtn"),
+      sessionMinutes: document.getElementById("sessionMinutes"),
+      breakMinutes: document.getElementById("breakMinutes"),
+      completedCount: document.getElementById("completedCount"),
+      dial: document.getElementById("dial"),
+    };
+
+    els.progressRing.style.strokeDasharray = String(CIRCUMFERENCE);
+
+    const state = {
+      mode: "session",
+      remainingMs: 25 * 60 * 1000,
+      sessionMinutes: 25,
+      breakMinutes: 5,
+      running: false,
+      completedSessions: 0,
+      lastTick: null,
+      intervalId: null,
+    };
+
+    function durationMs(mode) {
+      const minutes = mode === "session" ? state.sessionMinutes : state.breakMinutes;
+      return minutes * 60 * 1000;
+    }
+
+    function clampMinutes(value, min, max, fallback) {
+      const n = Number.parseInt(value, 10);
+      if (!Number.isFinite(n)) return fallback;
+      return Math.min(max, Math.max(min, n));
+    }
+
+    function formatTime(ms) {
+      const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+      const m = Math.floor(totalSeconds / 60);
+      const s = totalSeconds % 60;
+      return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
+
+    function persist() {
+      const payload = {
+        mode: state.mode,
+        remainingMs: state.remainingMs,
+        sessionMinutes: state.sessionMinutes,
+        breakMinutes: state.breakMinutes,
+        running: state.running,
+        completedSessions: state.completedSessions,
+        lastTick: state.running ? Date.now() : null,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    }
+
+    function restore() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        state.mode = saved.mode === "break" ? "break" : "session";
+        state.sessionMinutes = clampMinutes(saved.sessionMinutes, 1, 90, 25);
+        state.breakMinutes = clampMinutes(saved.breakMinutes, 1, 30, 5);
+        state.completedSessions = Number.isFinite(saved.completedSessions)
+          ? Math.max(0, saved.completedSessions)
+          : 0;
+        const remaining = Number(saved.remainingMs);
+        state.remainingMs = Number.isFinite(remaining) ? remaining : durationMs(state.mode);
+
+        if (saved.running && saved.lastTick) {
+          const elapsed = Date.now() - Number(saved.lastTick);
+          state.remainingMs = Math.max(0, state.remainingMs - elapsed);
+          state.running = state.remainingMs > 0;
+        } else {
+          state.running = false;
+        }
+      } catch {
+        /* keep defaults */
+      }
+    }
+
+    function updateModeButtons() {
+      const isSession = state.mode === "session";
+      els.sessionBtn.setAttribute("aria-selected", String(isSession));
+      els.breakBtn.setAttribute("aria-selected", String(!isSession));
+      els.sessionBtn.className = `flex-1 rounded-full py-2 text-sm font-semibold transition ${
+        isSession ? "bg-clay text-parchment shadow" : "text-parchment/70 hover:text-parchment"
+      }`;
+      els.breakBtn.className = `flex-1 rounded-full py-2 text-sm font-semibold transition ${
+        !isSession ? "bg-moss text-parchment shadow" : "text-parchment/70 hover:text-parchment"
+      }`;
+    }
+
+    function render() {
+      const total = durationMs(state.mode);
+      const ratio = total === 0 ? 0 : Math.min(1, Math.max(0, state.remainingMs / total));
+      els.progressRing.style.strokeDashoffset = String(CIRCUMFERENCE * (1 - ratio));
+      els.progressRing.setAttribute("stroke", state.mode === "session" ? "#c45c26" : "#8aa58a");
+      els.timeDisplay.textContent = formatTime(state.remainingMs);
+      els.modeLabel.textContent = state.mode === "session" ? "Session" : "Break";
+      els.statusLabel.textContent = state.running ? "Running" : state.remainingMs === 0 ? "Complete" : "Paused";
+      if (!state.running && state.remainingMs === durationMs(state.mode)) {
+        els.statusLabel.textContent = "Ready";
+      }
+      els.sessionMinutes.value = String(state.sessionMinutes);
+      els.breakMinutes.value = String(state.breakMinutes);
+      els.completedCount.textContent = String(state.completedSessions);
+      els.dial.classList.toggle("pulse-run", state.running);
+      els.startBtn.disabled = state.running;
+      els.pauseBtn.disabled = !state.running;
+      els.startBtn.classList.toggle("opacity-50", state.running);
+      els.pauseBtn.classList.toggle("opacity-50", !state.running);
+      document.title = `${formatTime(state.remainingMs)} · ${state.mode === "session" ? "Session" : "Break"}`;
+      updateModeButtons();
+    }
+
+    function chime() {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const now = ctx.currentTime;
+      [523.25, 659.25, 783.99].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.08, now + 0.02 + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7 + i * 0.12);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + i * 0.12);
+        osc.stop(now + 0.85 + i * 0.12);
+      });
+    }
+
+    function notifyComplete() {
+      chime();
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(state.mode === "session" ? "Session complete — take a break." : "Break over — back to focus.");
+      }
+    }
+
+    function completePeriod() {
+      stopTicker();
+      state.running = false;
+      state.remainingMs = 0;
+      if (state.mode === "session") {
+        state.completedSessions += 1;
+        state.mode = "break";
+      } else {
+        state.mode = "session";
+      }
+      state.remainingMs = durationMs(state.mode);
+      notifyComplete();
+      persist();
+      render();
+    }
+
+    function tick() {
+      const now = Date.now();
+      const elapsed = now - state.lastTick;
+      state.lastTick = now;
+      state.remainingMs -= elapsed;
+      if (state.remainingMs <= 0) {
+        completePeriod();
+        return;
+      }
+      persist();
+      render();
+    }
+
+    function startTicker() {
+      if (state.intervalId) return;
+      state.lastTick = Date.now();
+      state.intervalId = window.setInterval(tick, 250);
+    }
+
+    function stopTicker() {
+      if (state.intervalId) {
+        window.clearInterval(state.intervalId);
+        state.intervalId = null;
+      }
+    }
+
+    function start() {
+      if (state.running) return;
+      if (state.remainingMs <= 0) {
+        state.remainingMs = durationMs(state.mode);
+      }
+      state.running = true;
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+      persist();
+      render();
+      startTicker();
+    }
+
+    function pause() {
+      if (!state.running) return;
+      tick();
+      state.running = false;
+      stopTicker();
+      persist();
+      render();
+    }
+
+    function reset() {
+      stopTicker();
+      state.running = false;
+      state.remainingMs = durationMs(state.mode);
+      persist();
+      render();
+    }
+
+    function setMode(mode) {
+      if (state.mode === mode && !state.running) return;
+      stopTicker();
+      state.running = false;
+      state.mode = mode;
+      state.remainingMs = durationMs(mode);
+      persist();
+      render();
+    }
+
+    function applyDurationChange() {
+      const prevSession = state.sessionMinutes;
+      const prevBreak = state.breakMinutes;
+      state.sessionMinutes = clampMinutes(els.sessionMinutes.value, 1, 90, 25);
+      state.breakMinutes = clampMinutes(els.breakMinutes.value, 1, 30, 5);
+      const changed =
+        (state.mode === "session" && prevSession !== state.sessionMinutes) ||
+        (state.mode === "break" && prevBreak !== state.breakMinutes);
+      if (!state.running && changed) {
+        state.remainingMs = durationMs(state.mode);
+      }
+      persist();
+      render();
+    }
+
+    els.startBtn.addEventListener("click", start);
+    els.pauseBtn.addEventListener("click", pause);
+    els.resetBtn.addEventListener("click", reset);
+    els.sessionBtn.addEventListener("click", () => setMode("session"));
+    els.breakBtn.addEventListener("click", () => setMode("break"));
+    els.sessionMinutes.addEventListener("change", applyDurationChange);
+    els.breakMinutes.addEventListener("change", applyDurationChange);
+
+    document.addEventListener("keydown", (event) => {
+      if (event.code !== "Space" || event.repeat) return;
+      const tag = event.target && event.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON") return;
+      event.preventDefault();
+      if (state.running) pause();
+      else start();
+    });
+
+    window.addEventListener("beforeunload", persist);
+
+    restore();
+    if (state.running) startTicker();
+    render();
+  </script>
+</body>
+</html>
